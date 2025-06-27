@@ -6,7 +6,7 @@ const PDF_SUMMARY_API = `${URI}/extract-pdf-text`;
 export const llm_summarize_book = async (
   pdfBase64,
   bookName: string,
-  userPrompt = "What is the name of the student, their id and what course are they going for?"
+  userPrompt = "Please summarize this book for me. I want to know what it is about, its main themes, and any key takeaways."
 ) => {
   try {
     console.log("sent to llm for summarization");

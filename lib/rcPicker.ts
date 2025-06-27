@@ -1,6 +1,6 @@
 import randomColor from "randomcolor";
 
 export const color = randomColor({
-  luminosity: "random",
+  luminosity: "dark",
   alpha: 0.37,
 });

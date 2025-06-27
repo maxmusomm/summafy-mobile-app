@@ -10,20 +10,23 @@ import { db } from "~/lib/db";
 
 type NewSummary = typeof summaries.$inferInsert;
 
-const dummy: NewSummary[] = [];
-
 export default function Library() {
   const [books, setBooks] = useState<NewSummary[]>([]);
   const [searchResults, setSearchResults] = useState<NewSummary[]>(books);
   const [isSearching, setIsSearching] = useState(false);
 
-  useEffect(() => {
+  // Fetch books from db
+  const fetchBooks = () => {
     db.select()
       .from(summaries)
-      .then((books) => {
-        setBooks(books);
-        setSearchResults(books);
+      .then((_books) => {
+        setBooks(_books);
+        setSearchResults(_books);
       });
+  };
+
+  useEffect(() => {
+    fetchBooks();
   }, []);
 
   const handleSearchChange = (results: any[]) => {
@@ -31,13 +34,11 @@ export default function Library() {
     setIsSearching(results.length !== books.length);
   };
 
-  dummy.push(...books);
-
   return (
     <LinearGradient colors={["#000000", "#D72638"]} style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <Text style={styles.logo}>SUMMAFY</Text>
-      <CreateSummary style={styles.createSummary} />
+      <CreateSummary style={styles.createSummary} onBookAdded={fetchBooks} />
       <SearchBar
         route="Your Library"
         source="local"
@@ -51,8 +52,7 @@ export default function Library() {
           </Text>
         </View>
       )}
-      {/* <BookDisplay books={books} /> */}
-      <BookDisplay books={dummy} />
+      <BookDisplay books={searchResults} />
     </LinearGradient>
   );
 }

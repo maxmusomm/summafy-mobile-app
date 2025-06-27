@@ -1,13 +1,30 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import BackToComponent from "~/components/BackToComponent";
 import { Card } from "~/components/ui/card";
 import { Play, Book } from "lucide-react-native";
+import { db } from "~/lib/db";
+import { summaries } from "~/db/schema";
+
+type NewSummary = typeof summaries.$inferInsert;
+
 const summary = () => {
   const { id } = useLocalSearchParams();
+  const [summary, setSummary] = useState<NewSummary | null>(null);
+
+  db.select()
+    .from(summaries)
+    .then((data) => {
+      data
+        .filter((item) => item.id === id)
+        .forEach((item) => {
+          setSummary(item);
+        });
+    });
+
   return (
     <LinearGradient colors={["#000000", "#D72638"]} style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -21,8 +38,8 @@ const summary = () => {
       />
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>Title</Text>
-        <Text style={styles.cardDescription}>Author</Text>
-        <Text style={styles.cardDescription}>Time</Text>
+        <Text style={styles.cardDescription}>Author: {summary?.author}</Text>
+        <Text style={styles.cardDescription}>Time: 2mins</Text>
 
         <Link href={`/summary/${id}/audio`} asChild>
           <Pressable style={styles.button1}>

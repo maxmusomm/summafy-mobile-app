@@ -1,17 +1,34 @@
 import { useState, useEffect, useCallback } from "react";
-import { recentSummaries } from "../data/summaries";
+// import { recentSummaries } from "../data/summaries";
+import { summaries } from "~/db/schema";
+import { db } from "~/lib/db";
 
 export type SearchSource = "local" | "database";
 
 interface UseBookSearchProps {
   source: SearchSource;
 }
+type NewSummary = typeof summaries.$inferInsert;
+
+const recentSummaries: NewSummary[] = [];
 
 export const useBookSearch = ({ source }: UseBookSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState(recentSummaries);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    db.select()
+      .from(summaries)
+      .then((books) => {
+        setResults(books);
+      })
+      .catch((err) => {
+        console.error("Error fetching summaries in UseBookSearchHook:", err);
+        setError("Failed to load summaries");
+      });
+  }, []);
 
   const searchBooks = useCallback(
     async (query: string) => {
@@ -21,7 +38,7 @@ export const useBookSearch = ({ source }: UseBookSearchProps) => {
       try {
         if (source === "local") {
           // Search in local data
-          const filteredResults = recentSummaries.filter(
+          const filteredResults = results.filter(
             (book) =>
               book.title.toLowerCase().includes(query.toLowerCase()) ||
               book.author.toLowerCase().includes(query.toLowerCase())
@@ -31,7 +48,7 @@ export const useBookSearch = ({ source }: UseBookSearchProps) => {
           // TODO: Implement database search
           // This would be where you make API calls to your backend
           // For now, we'll just search local data
-          const filteredResults = recentSummaries.filter(
+          const filteredResults = results.filter(
             (book) =>
               book.title.toLowerCase().includes(query.toLowerCase()) ||
               book.author.toLowerCase().includes(query.toLowerCase())
@@ -49,7 +66,7 @@ export const useBookSearch = ({ source }: UseBookSearchProps) => {
         setIsLoading(false);
       }
     },
-    [source]
+    [source, results]
   );
 
   useEffect(() => {

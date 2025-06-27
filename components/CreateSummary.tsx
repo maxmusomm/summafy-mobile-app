@@ -14,11 +14,8 @@ import { Card } from "~/components/ui/card";
 import * as DocumentPicker from "expo-document-picker";
 import { llm_summarize_book } from "~/hooks/useSummaryBot";
 import * as FileSystem from "expo-file-system";
-import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { db } from "~/lib/db";
-import migrations from "~/drizzle/migrations";
 import { summaries } from "~/db/schema";
-import { deleteDatabaseAsync } from "expo-sqlite";
 import { color } from "~/lib/rcPicker";
 
 type NewSummary = typeof summaries.$inferInsert;
@@ -35,20 +32,11 @@ const initialFormState: FormState = {
   document: null,
 };
 
-export default function CreateSummary({ style }) {
+export default function CreateSummary({ style, onBookAdded }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [loading, setLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
-  const { success, error } = useMigrations(db, migrations);
-
-  useEffect(() => {
-    if (!success) {
-      console.error("Migration failed:", error);
-    } else {
-      console.log("Migrations completed successfully");
-    }
-  }, [success]);
 
   const insertUser = async (summary: NewSummary) => {
     return db.insert(summaries).values(summary);
@@ -105,10 +93,8 @@ export default function CreateSummary({ style }) {
         color: color,
         summary: response.answer as string,
       };
-      await db.delete(summaries);
       await insertUser(dbData);
-      const books = await db.select().from(summaries);
-      console.log("Book summary saved to database:", books[0]);
+      if (onBookAdded) onBookAdded();
       handleCloseModal();
     } catch (err: any) {
       setError("Failed to summarize book: " + (err?.message || String(err)));
@@ -130,6 +116,14 @@ export default function CreateSummary({ style }) {
     }));
   };
 
+  const handleDeleteItems = async () => {
+    try {
+      await db.delete(summaries);
+      console.log("All items deleted successfully");
+    } catch (error) {
+      console.error("Error deleting items:", error);
+    }
+  };
   return (
     <View style={style}>
       {/* Floating Action Button */}
@@ -233,6 +227,12 @@ export default function CreateSummary({ style }) {
                       Create Summary
                     </Text>
                   )}
+                </Pressable>
+                <Pressable
+                  onPress={handleDeleteItems}
+                  style={styles.createSummaryBtn}
+                >
+                  <Text>Delete Items</Text>
                 </Pressable>
                 {_error && (
                   <Text style={{ color: "red", marginTop: 8 }}>{_error}</Text>

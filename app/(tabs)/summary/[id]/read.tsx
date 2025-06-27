@@ -6,10 +6,26 @@ import { Card } from "~/components/ui/card";
 import BackToComponent from "~/components/BackToComponent";
 import { LinearGradient } from "expo-linear-gradient";
 import { Headphones, Speaker } from "lucide-react-native";
+import { db } from "~/lib/db";
+import { eq } from "drizzle-orm";
+import { summaries } from "~/db/schema";
+
+type NewSummary = typeof summaries.$inferInsert;
 
 const Read = () => {
   const { id } = useLocalSearchParams();
   const [isAudioMode, setIsAudioMode] = useState(false);
+  const [summary, setSummary] = useState<NewSummary | null>(null);
+
+  db.select()
+    .from(summaries)
+    .then((data) => {
+      data
+        .filter((item) => item.id === id)
+        .forEach((item) => {
+          setSummary(item);
+        });
+    });
 
   const toggleAudioMode = () => {
     setIsAudioMode(!isAudioMode);
@@ -39,24 +55,8 @@ const Read = () => {
       {/* Reading Card */}
       <Card style={styles.readingCard}>
         <ScrollView style={styles.textContainer}>
-          <Text style={styles.title}>Chapter 1: Introduction</Text>
-          <Text style={styles.content}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat. Lorem ipsum dolor sit amet,
-            consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut
-            labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo
-            consequat. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
-            nisi ut aliquip ex ea commodo consequat. Lorem ipsum dolor sit amet,
-            consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut
-            labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo
-            consequat.
-          </Text>
+          <Text style={styles.title}>{summary?.title}</Text>
+          <Text style={styles.content}>{summary?.summary}</Text>
           {/* Add your actual content here */}
         </ScrollView>
       </Card>
@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginBottom: 16,
+    textAlign: "center",
   },
   content: {
     fontSize: 16,
