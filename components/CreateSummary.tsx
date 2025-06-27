@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,17 +6,27 @@ import {
   Modal,
   TouchableOpacity,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Plus, X } from "lucide-react-native";
 import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import * as DocumentPicker from "expo-document-picker";
+import { llm_summarize_book } from "~/hooks/useSummaryBot";
+import * as FileSystem from "expo-file-system";
+import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import { db } from "~/lib/db";
+import migrations from "~/drizzle/migrations";
+import { summaries } from "~/db/schema";
+import { deleteDatabaseAsync } from "expo-sqlite";
+import { color } from "~/lib/rcPicker";
+
+type NewSummary = typeof summaries.$inferInsert;
 
 type FormState = {
   bookName: string;
   author: string;
-  document: DocumentPicker.DocumentPickerResult | null;
+  document: any; // now includes base64
 };
 
 const initialFormState: FormState = {
@@ -28,6 +38,21 @@ const initialFormState: FormState = {
 export default function CreateSummary({ style }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [formState, setFormState] = useState<FormState>(initialFormState);
+  const [loading, setLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
+  const { success, error } = useMigrations(db, migrations);
+
+  useEffect(() => {
+    if (!success) {
+      console.error("Migration failed:", error);
+    } else {
+      console.log("Migrations completed successfully");
+    }
+  }, [success]);
+
+  const insertUser = async (summary: NewSummary) => {
+    return db.insert(summaries).values(summary);
+  };
 
   const handlePickDocument = async () => {
     try {
@@ -37,23 +62,64 @@ export default function CreateSummary({ style }) {
         multiple: false,
       });
 
-      setFormState((prev) => ({
-        ...prev,
-        document: result,
-      }));
-    } catch (error) {
+      if (result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        const base64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        setFormState((prev) => ({
+          ...prev,
+          document: {
+            ...file,
+            base64, // added base64 here
+          },
+        }));
+      }
+    } catch (error: any) {
+      setError("Error picking document: " + (error?.message || String(error)));
       console.error("Error picking document:", error);
     }
   };
 
-  const handleSubmit = () => {
-    // TODO: Implement summary creation logic
-    console.log(formState);
-    handleCloseModal();
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!formState.document?.base64 || !formState.document?.name) {
+        setError("No document selected");
+        setLoading(false);
+        return;
+      }
+      const response = await llm_summarize_book(
+        formState.document.base64,
+        formState.bookName
+      );
+      console.log("Summary generated:", response.answer);
+
+      const dbData: NewSummary = {
+        id: response.id,
+        title: formState.bookName,
+        author: formState.author,
+        date: new Date().toISOString(),
+        duration: null,
+        color: color,
+        summary: response.answer as string,
+      };
+      await db.delete(summaries);
+      await insertUser(dbData);
+      const books = await db.select().from(summaries);
+      console.log("Book summary saved to database:", books[0]);
+      handleCloseModal();
+    } catch (err: any) {
+      setError("Failed to summarize book: " + (err?.message || String(err)));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseModal = () => {
     setIsModalVisible(false);
+    setError(null);
     setFormState(initialFormState);
   };
 
@@ -97,8 +163,8 @@ export default function CreateSummary({ style }) {
 
               {/* Header */}
               <View style={styles.header}>
-                <Text style={styles.title}>Create a New Summary</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.title as any]}>Create a New Summary</Text>
+                <Text style={[styles.subtitle as any]}>
                   Enter the book details below to get started.
                 </Text>
               </View>
@@ -106,7 +172,7 @@ export default function CreateSummary({ style }) {
               {/* Form */}
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Book Name</Text>
+                  <Text style={[styles.label as any]}>Book Name</Text>
                   <Input
                     value={formState.bookName}
                     onChangeText={(value) => updateFormField("bookName", value)}
@@ -123,7 +189,7 @@ export default function CreateSummary({ style }) {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Author</Text>
+                  <Text style={[styles.label as any]}>Author</Text>
                   <Input
                     value={formState.author}
                     onChangeText={(value) => updateFormField("author", value)}
@@ -140,17 +206,16 @@ export default function CreateSummary({ style }) {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Book Document</Text>
+                  <Text style={[styles.label as any]}>Book Document</Text>
                   <TouchableOpacity
                     style={[
                       styles.documentPicker,
-                      formState.document?.assets?.[0] &&
-                        styles.documentPickerActive,
+                      formState.document?.name && styles.documentPickerActive,
                     ]}
                     onPress={handlePickDocument}
                   >
-                    <Text style={styles.documentPickerText}>
-                      {formState.document?.assets?.[0]?.name ||
+                    <Text style={[styles.documentPickerText as any]}>
+                      {formState.document?.name ||
                         "Tap to upload PDF, EPUB, or TXT"}
                     </Text>
                   </TouchableOpacity>
@@ -159,9 +224,19 @@ export default function CreateSummary({ style }) {
                 <Pressable
                   onPress={handleSubmit}
                   style={styles.createSummaryBtn}
+                  disabled={loading}
                 >
-                  <Text style={styles.buttonText}>Create Summary</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#000" />
+                  ) : (
+                    <Text style={[styles.buttonText as any]}>
+                      Create Summary
+                    </Text>
+                  )}
                 </Pressable>
+                {_error && (
+                  <Text style={{ color: "red", marginTop: 8 }}>{_error}</Text>
+                )}
               </View>
             </Card>
           </Pressable>

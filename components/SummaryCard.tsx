@@ -2,19 +2,13 @@ import * as React from "react";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import { Link } from "expo-router";
 import { Card } from "~/components/ui/card";
+import { summaries } from "~/db/schema";
 
 // Type definition for a summary
-type Summary = {
-  id: number;
-  title: string;
-  color: string;
-  author?: string;
-  date?: string;
-  duration?: string;
-};
+type NewSummary = typeof summaries.$inferInsert;
 
 interface SummaryCardProps {
-  summary: Summary;
+  summary: NewSummary;
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ summary }) => {

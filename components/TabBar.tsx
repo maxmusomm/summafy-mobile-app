@@ -39,7 +39,7 @@ const TabBar = ({ state, descriptors, navigation }) => {
             ? options.title
             : route.name;
 
-        console.log("TabBar", route.name);
+        // console.log("TabBar", route.name);
         if (
           [
             "summary",

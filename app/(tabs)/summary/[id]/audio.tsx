@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import React, { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router";
-import { useAudioPlayer } from "expo-audio";
 import { Card } from "~/components/ui/card";
 import BackToComponent from "~/components/BackToComponent";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,14 +9,13 @@ import { Play, Pause, SkipBack, SkipForward } from "lucide-react-native";
 
 const Audio = () => {
   const { id } = useLocalSearchParams();
-  const player = useAudioPlayer(require(`~/app/(tabs)/summary/[id]/test.mp3`));
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlayPause = async () => {
     if (isPlaying) {
-      await player.pause();
+      console.log("pause");
     } else {
-      await player.play();
+      console.log("play");
     }
     setIsPlaying(!isPlaying);
   };

@@ -5,16 +5,25 @@ import SearchBar from "~/components/SearchBar";
 import { Stack } from "expo-router";
 import BookDisplay from "~/components/BookDisplay";
 import { useState } from "react";
-import { recentSummaries } from "~/data/summaries";
-import CreateSummary from "~/components/CreateSummary";
+import { getBooks } from "~/lib/getBooks";
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  date: string;
+  duration: string | null;
+  color: string;
+  summary: string | null;
+}
 
 export default function Tab() {
-  const [searchResults, setSearchResults] = useState(recentSummaries);
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   const handleSearchChange = (results: any[]) => {
     setSearchResults(results);
-    setIsSearching(results.length !== recentSummaries.length);
+    setIsSearching(results.length !== searchResults.length);
   };
 
   return (
@@ -22,30 +31,11 @@ export default function Tab() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden={true} />
       <Text style={styles.logo}>SUMMAFY</Text>
-      <CreateSummary style={styles.createSummary} />
 
       <SearchBar
         route="Upload Book"
         source="local"
         onResultsChange={handleSearchChange}
-      />
-      {!isSearching && (
-        <View style={styles.headerContainer}>
-          <Text style={styles.mainHeading}>
-            Smart summaries—like you've read every word
-          </Text>
-          <Text style={styles.subHeading}>
-            Upload a book and get a clear, AI-crafted summary—with reading or
-            listening options.
-          </Text>
-        </View>
-      )}
-      <BookDisplay
-        books={searchResults}
-        onRefresh={() => {
-          // TODO: Implement refresh logic
-          console.log("Refreshing...");
-        }}
       />
     </LinearGradient>
   );
@@ -79,11 +69,5 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
     textAlign: "center",
     lineHeight: 24,
-  },
-  createSummary: {
-    position: "absolute",
-    bottom: 155,
-    alignSelf: "center",
-    zIndex: 10,
   },
 });

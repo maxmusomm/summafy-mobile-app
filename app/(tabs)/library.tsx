@@ -3,22 +3,41 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import SearchBar from "~/components/SearchBar";
 import BookDisplay from "~/components/BookDisplay";
-import { useState } from "react";
-import { recentSummaries } from "~/data/summaries";
+import { useEffect, useState } from "react";
+import CreateSummary from "~/components/CreateSummary";
+import { summaries } from "~/db/schema";
+import { db } from "~/lib/db";
 
-export default function Tab() {
-  const [searchResults, setSearchResults] = useState(recentSummaries);
+type NewSummary = typeof summaries.$inferInsert;
+
+const dummy: NewSummary[] = [];
+
+export default function Library() {
+  const [books, setBooks] = useState<NewSummary[]>([]);
+  const [searchResults, setSearchResults] = useState<NewSummary[]>(books);
   const [isSearching, setIsSearching] = useState(false);
 
+  useEffect(() => {
+    db.select()
+      .from(summaries)
+      .then((books) => {
+        setBooks(books);
+        setSearchResults(books);
+      });
+  }, []);
+
   const handleSearchChange = (results: any[]) => {
-    setSearchResults(results);
-    setIsSearching(results.length !== recentSummaries.length);
+    setBooks(results);
+    setIsSearching(results.length !== books.length);
   };
+
+  dummy.push(...books);
 
   return (
     <LinearGradient colors={["#000000", "#D72638"]} style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <Text style={styles.logo}>SUMMAFY</Text>
+      <CreateSummary style={styles.createSummary} />
       <SearchBar
         route="Your Library"
         source="local"
@@ -32,7 +51,8 @@ export default function Tab() {
           </Text>
         </View>
       )}
-      <BookDisplay books={searchResults} />
+      {/* <BookDisplay books={books} /> */}
+      <BookDisplay books={dummy} />
     </LinearGradient>
   );
 }
@@ -65,5 +85,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     paddingLeft: 20,
+  },
+  createSummary: {
+    position: "absolute",
+    bottom: 155,
+    alignSelf: "center",
+    zIndex: 10,
   },
 });
